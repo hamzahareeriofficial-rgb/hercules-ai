@@ -1,0 +1,43 @@
+import { useState } from 'react'
+import { Database, Table2, Key, Shield, Hash, Calendar, Check, ArrowRight, Play, Wand2, Code, Copy, Download } from 'lucide-react'
+import { cn } from '../../lib/utils'
+
+type TableField = { name: string; type: string; required: boolean; primary?: boolean }
+type MockTable = { name: string; fields: TableField[]; rls: boolean }
+
+const MOCK_SCHEMA: MockTable[] = [
+  { name: 'users', fields: [{ name: 'id', type: 'uuid', required: true, primary: true },{ name: 'email', type: 'text', required: true },{ name: 'full_name', type: 'text', required: false },{ name: 'avatar_url', type: 'text', required: false },{ name: 'created_at', type: 'timestamptz', required: true }], rls: true },
+  { name: 'projects', fields: [{ name: 'id', type: 'uuid', required: true, primary: true },{ name: 'user_id', type: 'uuid', required: true },{ name: 'name', type: 'text', required: true },{ name: 'description', type: 'text', required: false },{ name: 'status', type: 'text', required: true },{ name: 'created_at', type: 'timestamptz', required: true }], rls: true },
+  { name: 'subscriptions', fields: [{ name: 'id', type: 'uuid', required: true, primary: true },{ name: 'user_id', type: 'uuid', required: true },{ name: 'tier', type: 'text', required: true },{ name: 'stripe_customer_id', type: 'text', required: false },{ name: 'current_period_end', type: 'timestamptz', required: false }], rls: true },
+]
+
+const SQL_TEMPLATES = [
+  { label: 'Create Table', sql: 'CREATE TABLE items (\n  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n  user_id UUID REFERENCES users(id),\n  name TEXT NOT NULL,\n  created_at TIMESTAMPTZ DEFAULT NOW()\n);' },
+  { label: 'Enable RLS', sql: 'ALTER TABLE items ENABLE ROW LEVEL SECURITY;\n\nCREATE POLICY "Users can view own items"\n  ON items FOR SELECT USING (auth.uid() = user_id);\nCREATE POLICY "Users can insert own items"\n  ON items FOR INSERT WITH CHECK (auth.uid() = user_id);' },
+  { label: 'Create Index', sql: 'CREATE INDEX idx_items_user_id ON items(user_id);\nCREATE INDEX idx_items_created_at ON items(created_at DESC);' },
+]
+
+export function DatabaseManagerPage() {
+  const [activeTab, setActiveTab] = useState<'schema' | 'sql' | 'migrations'>('schema')
+  const [selectedTable, setSelectedTable] = useState<string | null>(null)
+  const [sqlTemplate, setSqlTemplate] = useState(SQL_TEMPLATES[0])
+  const [generatePrompt, setGeneratePrompt] = useState('')
+  const [isGenerating, setIsGenerating] = useState(false)
+
+  return (
+    <div className="p-6 max-w-6xl mx-auto">
+      <div className="flex items-center justify-between mb-6"><div><h1 className="text-2xl font-bold text-white">Database Manager</h1><p className="text-sm text-[var(--text-secondary)] mt-1">AI-powered schema design, SQL editor, and migrations</p></div><div className="flex items-center gap-2"><button className="btn-outline-gold text-sm flex items-center gap-2"><Download className="w-4 h-4" /> Export Schema</button><button className="btn-gold text-sm flex items-center gap-2"><Wand2 className="w-4 h-4" /> Generate Migration</button></div></div>
+      <div className="flex gap-1 bg-[var(--dark-surface-2)] rounded-xl p-1 mb-6 w-fit">
+        {[{ id: 'schema', label: 'Schema Visualizer', icon: Table2 },{ id: 'sql', label: 'SQL Editor', icon: Code },{ id: 'migrations', label: 'Migrations', icon: ArrowRight }].map(({ id, label, icon: Icon }) => (<button key={id} onClick={() => setActiveTab(id as any)} className={cn('flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all', activeTab === id ? 'bg-[var(--dark-surface)] text-white shadow-sm' : 'text-[var(--text-secondary)] hover:text-white')}><Icon className="w-4 h-4" /> {label}</button>))}
+      </div>
+      {activeTab === 'schema' && (
+        <div className="space-y-6">
+          <div className="glass-card p-5"><div className="flex items-center gap-2 mb-3"><Wand2 className="w-4 h-4 text-[var(--gold-500)]" /><h3 className="font-semibold text-white text-sm">AI Schema Generator</h3></div><div className="flex gap-3"><input value={generatePrompt} onChange={(e) => setGeneratePrompt(e.target.value)} className="input-dark flex-1" placeholder="Describe your database needs..." /><button onClick={() => { if(generatePrompt.trim()){ setIsGenerating(true); setTimeout(() => setIsGenerating(false), 2000) }}} disabled={!generatePrompt.trim() || isGenerating} className="btn-gold flex items-center gap-2 text-sm">{isGenerating ? <div className="w-4 h-4 border-2 border-[var(--dark-bg)] border-t-transparent rounded-full animate-spin" /> : <Play className="w-4 h-4" />}Generate</button></div></div>
+          <div className="grid lg:grid-cols-3 gap-4">{MOCK_SCHEMA.map((table) => (<div key={table.name} onClick={() => setSelectedTable(selectedTable === table.name ? null : table.name)} className={cn('glass-card p-4 cursor-pointer transition-all duration-300', selectedTable === table.name && 'border-[var(--gold-500)] shadow-[var(--gold-glow)]')}><div className="flex items-center justify-between mb-3"><div className="flex items-center gap-2"><div className="w-8 h-8 rounded-lg bg-[var(--gold-500)]/10 flex items-center justify-center"><Table2 className="w-4 h-4 text-[var(--gold-500)]" /></div><span className="font-semibold text-white text-sm">{table.name}</span></div>{table.rls && <div className="flex items-center gap-1 text-[10px] text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded"><Shield className="w-2.5 h-2.5" /> RLS</div>}</div><div className="space-y-1">{table.fields.slice(0, selectedTable === table.name ? undefined : 3).map((field) => (<div key={field.name} className="flex items-center gap-2 text-xs py-1"><Key className={cn('w-3 h-3 flex-shrink-0', field.primary ? 'text-[var(--gold-500)]' : 'text-[var(--text-muted)]')} /><span className={cn('font-mono', field.primary ? 'text-[var(--gold-500)]' : 'text-[var(--text-secondary)]')}>{field.name}</span><span className="text-[var(--text-muted)]">{field.type}</span>{field.primary && <span className="text-[var(--gold-500)] text-[10px]">PK</span>}</div>))}{selectedTable !== table.name && table.fields.length > 3 && <p className="text-[10px] text-[var(--text-muted)] pl-6">+{table.fields.length - 3} more fields</p>}</div></div>))}</div>
+        </div>
+      )}
+      {activeTab === 'sql' && (<div className="space-y-4"><div className="flex gap-2 flex-wrap">{SQL_TEMPLATES.map((t) => (<button key={t.label} onClick={() => setSqlTemplate(t)} className={cn('px-3 py-1.5 rounded-lg text-xs font-medium transition-colors', sqlTemplate.label === t.label ? 'bg-[var(--gold-500)]/20 text-[var(--gold-500)] border border-[var(--gold-500)]/30' : 'bg-[var(--dark-surface-2)] text-[var(--text-secondary)] border border-[var(--dark-border)]')}>{t.label}</button>))}</div><div className="glass-card overflow-hidden"><div className="flex items-center justify-between px-4 py-2 border-b border-[var(--dark-border)] bg-[var(--dark-surface-3)]"><span className="text-xs font-medium text-[var(--text-muted)]">SQL Editor</span><div className="flex items-center gap-2"><button className="p-1.5 rounded hover:bg-[var(--dark-surface)] text-[var(--text-muted)] hover:text-white"><Copy className="w-3.5 h-3.5" /></button><button className="btn-gold text-xs py-1 px-3 flex items-center gap-1"><Play className="w-3 h-3" /> Run</button></div></div><pre className="p-4 text-sm font-mono text-[var(--text-secondary)] overflow-x-auto whitespace-pre-wrap bg-[var(--dark-bg)]">{sqlTemplate.sql}</pre></div></div>)}
+      {activeTab === 'migrations' && (<div className="space-y-4">{[{ name: '001_create_users', status: 'applied', time: '2 hours ago' },{ name: '002_create_projects', status: 'applied', time: '2 hours ago' },{ name: '003_add_rls_policies', status: 'applied', time: '1 hour ago' },{ name: '004_create_subscriptions', status: 'pending', time: 'ready to apply' }].map((m) => (<div key={m.name} className="glass-card p-4 flex items-center justify-between"><div className="flex items-center gap-3"><div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', m.status === 'applied' ? 'bg-green-500/10' : 'bg-[var(--dark-surface-3)]')}>{m.status === 'applied' ? <Check className="w-4 h-4 text-green-400" /> : <ArrowRight className="w-4 h-4 text-[var(--text-muted)]" />}</div><div><p className="text-sm font-medium text-white font-mono">{m.name}</p><p className="text-xs text-[var(--text-muted)]">{m.time}</p></div></div><span className={cn('text-xs font-medium px-2 py-0.5 rounded', m.status === 'applied' ? 'bg-green-500/10 text-green-400' : 'bg-[var(--gold-500)]/10 text-[var(--gold-500)]')}>{m.status}</span></div>))}</div>)}
+    </div>
+  )
+}

@@ -1,0 +1,36 @@
+import { useState } from 'react'
+import { CreditCard, Check, Zap, Sparkles, Building2, Plus, ArrowRight, CircleDollarSign, Shield, Download } from 'lucide-react'
+import { cn, TIERS, CREDIT_PACKS, formatCredits } from '../../lib/utils'
+
+export function BillingPage() {
+  const [currentTier, setCurrentTier] = useState<string>('free')
+  const [billingInterval, setBillingInterval] = useState<'monthly' | 'yearly'>('monthly')
+
+  return (
+    <div className="p-6 max-w-5xl mx-auto">
+      <div className="mb-8"><h1 className="text-2xl font-bold text-white">Billing & Credits</h1><p className="text-sm text-[var(--text-secondary)] mt-1">Manage your subscription and credit balance</p></div>
+      <div className="glass-card p-6 mb-8 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-[var(--gold-500)] opacity-[0.04] blur-[80px] rounded-full" />
+        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div><p className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-2">Available Credits</p><div className="flex items-baseline gap-2"><span className="text-4xl font-bold gold-text">4,750</span><span className="text-sm text-[var(--text-secondary)]">credits</span></div><div className="flex items-center gap-2 mt-2"><div className="h-2 w-48 bg-[var(--dark-surface-3)] rounded-full overflow-hidden"><div className="h-full w-[95%] bg-gradient-to-r from-[var(--gold-500)] to-[var(--rose-500)] rounded-full" /></div><span className="text-xs text-[var(--text-muted)]">95% remaining</span></div></div>
+          <button className="btn-gold flex items-center gap-2"><Plus className="w-4 h-4" /> Buy Credits</button>
+        </div>
+      </div>
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4"><h2 className="text-lg font-semibold text-white">Subscription Plans</h2><div className="flex bg-[var(--dark-surface-2)] rounded-xl p-1">{(['monthly', 'yearly'] as const).map((interval) => (<button key={interval} onClick={() => setBillingInterval(interval)} className={cn('px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize', billingInterval === interval ? 'bg-[var(--dark-bg)] text-white' : 'text-[var(--text-secondary)] hover:text-white')}>{interval}{interval === 'yearly' && <span className="ml-1 text-[var(--gold-500)]">-20%</span>}</button>))}</div></div>
+        <div className="grid md:grid-cols-3 gap-4">
+          {Object.entries(TIERS).map(([key, tier]) => {
+            const price = billingInterval === 'yearly' ? Math.round(tier.price * 0.8 * 12) : tier.price
+            const isCurrent = currentTier === key
+            const Icon = key === 'free' ? Zap : key === 'pro' ? Sparkles : Building2
+            return (<div key={key} className={cn('glass-card p-6 transition-all duration-300 relative', isCurrent && 'border-[var(--gold-500)] shadow-[var(--gold-glow)]', key === 'pro' && 'ring-1 ring-[var(--gold-500)]/20')}>{key === 'pro' && <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[var(--gold-500)] to-[var(--rose-500)] text-white text-[10px] font-bold px-3 py-1 rounded-full">MOST POPULAR</div>}<div className="w-10 h-10 rounded-lg bg-[var(--gold-500)]/10 flex items-center justify-center mb-4"><Icon className="w-5 h-5 text-[var(--gold-500)]" /></div><h3 className="text-lg font-semibold text-white capitalize">{tier.name}</h3><div className="mt-3 mb-4">{price === 0 ? <span className="text-3xl font-bold text-white">Free</span> : <div className="flex items-baseline gap-1"><span className="text-3xl font-bold text-white">${price}</span><span className="text-sm text-[var(--text-muted)]">/{billingInterval === 'yearly' ? 'year' : 'mo'}</span></div>}<p className="text-xs text-[var(--text-muted)] mt-1">{tier.credits.toLocaleString()} credits/{billingInterval === 'yearly' ? 'year' : 'month'}</p></div><ul className="space-y-2 mb-6">{tier.features.map((f) => (<li key={f} className="flex items-start gap-2 text-sm text-[var(--text-secondary)]"><Check className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />{f}</li>))}</ul><button disabled={isCurrent} className={cn('w-full py-2.5 rounded-xl text-sm font-semibold transition-all', isCurrent ? 'bg-[var(--dark-surface-3)] text-[var(--text-muted)] cursor-not-allowed' : key === 'pro' ? 'btn-gold' : 'btn-outline-gold')}>{isCurrent ? 'Current Plan' : `Upgrade to ${tier.name}`}</button></div>)
+          })}
+        </div>
+      </div>
+      <div><h2 className="text-lg font-semibold text-white mb-4">One-Time Credit Packs</h2>
+        <div className="grid sm:grid-cols-3 gap-4 mb-8">{CREDIT_PACKS.map((pack) => (<div key={pack.id} className="glass-card p-5 hover:border-[var(--gold-500)]/30 transition-all group"><div className="flex items-center justify-between mb-4"><CircleDollarSign className="w-8 h-8 text-[var(--gold-500)]" /><span className="text-xs text-[var(--gold-500)] font-medium bg-[var(--gold-500)]/10 px-2 py-0.5 rounded-full">+{(pack.credits / 20).toFixed(0)}% bonus</span></div><p className="text-2xl font-bold text-white">{pack.credits.toLocaleString()}</p><p className="text-sm text-[var(--text-secondary)] mb-4">credits</p><div className="flex items-center justify-between"><span className="text-lg font-semibold text-white">${pack.price}</span><button className="btn-outline-gold text-xs py-1.5 px-3 flex items-center gap-1">Buy <ArrowRight className="w-3 h-3" /></button></div></div>))}</div>
+        <h2 className="text-lg font-semibold text-white mb-4">Billing History</h2><div className="glass-card overflow-hidden"><table className="w-full"><thead><tr className="border-b border-[var(--dark-border)]"><th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Invoice</th><th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Date</th><th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Amount</th><th className="text-left p-4 text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Status</th><th className="text-right p-4 text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Download</th></tr></thead><tbody>{[{ id: 'INV-2026-001', date: 'Aug 1, 2026', amount: '$29.00', status: 'Paid' },{ id: 'INV-2026-002', date: 'Jul 1, 2026', amount: '$29.00', status: 'Paid' },{ id: 'INV-2026-003', date: 'Jun 1, 2026', amount: '$5.00', status: 'Paid' }].map((inv) => (<tr key={inv.id} className="border-b border-[var(--dark-border)] hover:bg-[var(--dark-surface-2)]/50 transition-colors"><td className="p-4 text-sm text-white font-mono">{inv.id}</td><td className="p-4 text-sm text-[var(--text-secondary)]">{inv.date}</td><td className="p-4 text-sm text-white">{inv.amount}</td><td className="p-4"><span className="text-xs bg-green-500/10 text-green-400 px-2 py-0.5 rounded-full font-medium">{inv.status}</span></td><td className="p-4 text-right"><button className="p-1.5 rounded-lg hover:bg-[var(--dark-surface-2)] text-[var(--text-muted)] hover:text-white transition-colors"><Download className="w-4 h-4" /></button></td></tr>))}</tbody></table></div>
+      </div>
+    </div>
+  )
+}
